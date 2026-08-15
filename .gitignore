@@ -1,0 +1,11 @@
+# Factory partition dumps contain YOUR device's MAC addresses, serial numbers
+# and Wi-Fi RF calibration data. They are unique identifiers - never commit them,
+# never publish them, and never flash someone else's dump onto your device.
+*.bin
+factory*.img
+
+# snapshot.sh output includes a full `uci show`, which carries MAC addresses.
+*-state.txt
+
+# macOS
+.DS_Store
