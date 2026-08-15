@@ -18,6 +18,42 @@ global · country code · region lock.</sub>
 
 ---
 
+## Is this your problem?
+
+Two unrelated faults are documented here. They turned up on the same router, but
+you may only have one of them.
+
+**1. The VPN pages are missing from the admin panel.**
+
+You bought a GL.iNet router in mainland China. There is nowhere to add a
+WireGuard or OpenVPN config — no *VPN Client*, no *VPN Server*. Updating the
+firmware does not bring them back, and a factory reset does not either.
+Confusingly, **Tailscale and ZeroTier are still there** under Applications, so it
+looks like VPN support works in general. It does not, for the classic VPN
+clients, and no setting in the panel turns them on.
+
+→ You are in the right place. Start at
+[Read this before you change anything](#read-this-before-you-change-anything).
+
+*Searched as: GL-MT3000 no VPN option · Beryl AX VPN menu missing · GL.iNet China
+version no WireGuard · CN firmware hides VPN · convert GL.iNet CN to global ·
+region lock · country code.*
+
+**2. A Tailscale exit node works on the router, but not on anything behind it.**
+
+The router itself has internet and `tailscale status` looks healthy. Every phone
+and laptop on its LAN times out — pages hang, apps never load. This one has
+**nothing to do with the region code**: it affects any GL.iNet router, in any
+region, patched or not.
+
+→ [docs/TAILSCALE-EXIT-NODE.md](docs/TAILSCALE-EXIT-NODE.md)
+
+*Searched as: GL.iNet exit node no internet on clients · Tailscale exit node LAN
+devices no internet · router works but clients don't · tailscale0 masquerade ·
+GL-MT3000 exit node not working.*
+
+---
+
 ## If someone just pointed you here
 
 Read this part even if you skip the rest.
