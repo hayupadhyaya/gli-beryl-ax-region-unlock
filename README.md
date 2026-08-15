@@ -18,6 +18,44 @@ global · country code · region lock.</sub>
 
 ---
 
+## If someone just pointed you here
+
+Read this part even if you skip the rest.
+
+This tool changes bytes in a flash partition on your router. Most of what it does
+is safe and reversible, and one of the two options never touches flash at all. But
+the permanent option carries a real risk that is worth understanding *before* you
+type anything.
+
+- The partition it writes to also holds your router's **MAC addresses and Wi-Fi
+  radio calibration data**. Those are unique to your individual unit and exist
+  nowhere else — not in any firmware image you can download, not at GL.iNet, not
+  on any other router of the same model.
+- If the write is interrupted — power cut, unplugging, pressing reset — that data
+  can be destroyed. The symptom is a router whose Wi-Fi no longer works, and
+  **reinstalling the firmware does not fix it**, because firmware images do not
+  contain your unit's calibration.
+- **The backup this tool takes is the only thing that can undo that.** Take it,
+  and copy it off the router, before you patch. That is not cautious advice you
+  can skip; it is the entire safety net.
+- In the worst case — a router that will not boot and cannot be reached over the
+  network at all — recovery means **opening the case and connecting to the serial
+  pads on the circuit board** to restore your backup or get a console. That needs
+  a USB-to-serial adapter, soldering or pogo pins, and some comfort with
+  bootloader consoles. **This repo deliberately does not document that procedure.
+  It has not been tested here, and the pad locations on this model have not been
+  verified**, so do not run the risky path assuming you have that fallback.
+
+If any of that sounds like more than you want to take on, **use `soft` instead**
+([step 3](#3-the-safe-option)). It unhides exactly the same pages, is undone with
+one command, and cannot damage anything. The only thing you give up is that it
+does not survive a factory reset or a firmware upgrade that discards settings.
+
+And if all you actually wanted was **Tailscale — it already works** on a CN
+device, with no changes at all. See the table below.
+
+---
+
 ## Read this before you change anything
 
 **Your CN firmware is not crippled, and it is probably not missing the thing you
@@ -149,7 +187,11 @@ is flagged. Despite the key's name, your chosen interface language is irrelevant
 
 There is no whitelist of approved regions — anything that is not `CN` opens
 everything. `CA` works exactly as well as `US`. Pick the code for where you
-actually are, since the same value feeds the Wi-Fi regulatory domain.
+actually are, since the same value is the one you want for the Wi-Fi regulatory
+domain, and that one *does* have a fixed list.
+
+Which codes are valid, and why the answer differs between the two settings:
+**[docs/COUNTRY-CODES.md](docs/COUNTRY-CODES.md)**.
 
 ---
 

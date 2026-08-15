@@ -59,13 +59,15 @@ src=9.9.9.9 dst=100.64.0.1 ... packets=13 [ASSURED]
 ## Making it stick
 
 The one-liner survives a reboot, but **GL's Tailscale service rebuilds that zone**
-when you toggle Tailscale in the UI, and a firmware upgrade can reset it. On a
-router you cannot walk over to, that is not good enough. Install
+when you toggle Tailscale in the UI, and a firmware upgrade can reset it. This is
+a travel router: it gets plugged into hotel, office and guest networks, each one
+handing it a different WAN, and it is often somewhere you cannot physically get
+to it. A fix that needs re-applying by hand is not a fix. Install
 [`extras/tailscale-exit-node-masq.sh`](../extras/tailscale-exit-node-masq.sh),
 which re-applies the setting at both config and live-iptables level and is safe to
 run repeatedly.
 
-It gets invoked from three independent places, so no single reset breaks it:
+It gets invoked from four independent places, so no single reset breaks it:
 
 ```sh
 # 1. Every firewall reload.
@@ -100,8 +102,8 @@ grep -qxF /etc/firewall.tailscale.sh /etc/sysupgrade.conf || \
 #    A WAN change (DHCP renew, link flap, ISP reconnect) rebuilds the firewall in
 #    a way that drops the rule WITHOUT running the firewall includes - observed
 #    on 4.8.1 after a plain `ifup wan`. This is the hook that catches it, and on
-#    a router at the far end of someone else's internet connection it is the one
-#    that matters most.
+#    a router that keeps moving between networks - and so keeps re-acquiring a
+#    WAN - this is the hook that matters most.
 mkdir -p /etc/hotplug.d/iface
 cat > /etc/hotplug.d/iface/99-ts-exit-masq <<'HOTPLUG'
 #!/bin/sh
@@ -158,8 +160,10 @@ beforehand.
 ### DNS
 
 While you are here, pin the upstream resolvers rather than inheriting whatever
-the upstream network hands out. On a router that lives at someone else's house
-this removes a whole class of "it worked at home" problem, and it cleared a
+each network hands out. A travel router picks up a new DNS server at every hotel,
+cafe and guest network it joins, and some of those are slow, filtered, or
+captive-portal appliances that hijack lookups. Pinning removes a whole class of
+"it worked on the last network" problem, and it cleared a
 `Tailscale can't reach the configured DNS servers` health warning on the test
 device:
 

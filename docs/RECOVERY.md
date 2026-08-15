@@ -45,19 +45,73 @@ skip the upload and restore straight from there.
 The script refuses to restore an image whose size does not match the partition,
 which catches the common mistake of restoring a truncated or wrong-model dump.
 
-Manual equivalent, if the script will not run:
+Manual equivalent, if the script will not run.
+
+**Which number?** The one belonging to the partition *labelled* `Factory` in
+`/proc/mtd`. It is `3` on the reference device, but it differs between models and
+has changed between firmware versions on the same model, so derive it rather than
+copying a number out of this document:
 
 ```sh
-cat /proc/mtd                                    # find the Factory partition
-dd if=/tmp/factory_backup.bin of=/dev/mtdblock3 bs=4096   # use YOUR number
+# Pull the number out of the Factory line automatically.
+N=$(awk -F'[:"]' 'tolower($3) ~ /^factory$/ {gsub(/[^0-9]/,"",$1); print $1; exit}' /proc/mtd)
+echo "Factory is /dev/mtdblock$N"
+
+# Sanity-check that against the real table before writing anything.
+cat /proc/mtd
+```
+
+On the reference device that table reads:
+
+```
+mtd3: 00200000 00020000 "Factory"
+   ^ this digit is what ends up in /dev/mtdblockN
+```
+
+so `$N` is `3` and the target is `/dev/mtdblock3`. If your `Factory` line says
+`mtd5`, the target is `/dev/mtdblock5`. Only once it looks right:
+
+```sh
+dd if=/tmp/factory_backup.bin of=/dev/mtdblock$N bs=4096
 sync
 reboot
 ```
 
-After rebooting, confirm the damage is undone:
+Writing a Factory image to the wrong partition will destroy whatever was there,
+which is why the script resolves this by label and refuses to guess.
+
+### Knowing what "undone" looks like
+
+You cannot tell whether your MACs came back unless you know what they were. In
+order of convenience:
+
+**1. The label on the underside of the router.** Ground truth, needs no files.
+
+**2. Your backup image.** The two MACs live at offsets `0x04` and `0x0A` of the
+Factory partition:
 
 ```sh
-cat /proc/gl-hw-info/device_mac      # should be your original MAC
+dd if=factory-backup.bin bs=1 skip=4  count=6 2>/dev/null | hexdump -e '5/1 "%02x:" 1/1 "%02x\n"'
+dd if=factory-backup.bin bs=1 skip=10 count=6 2>/dev/null | hexdump -e '5/1 "%02x:" 1/1 "%02x\n"'
+```
+
+Identical output on macOS, Linux and busybox, so you can run it against the file
+on your computer or against `/dev/mtdblock$N` on the router. The two values differ
+only in the last octet; the one at `0x0A` is what the firmware reports as
+`device_mac` and assigns to `eth0`. Both begin with GL.iNet's vendor prefix.
+
+**3. A running router**, recorded *before* you touch anything:
+
+```sh
+cat /proc/gl-hw-info/device_mac
+ip link | grep ether
+```
+
+After rebooting, compare against whichever of those you have:
+
+```sh
+cat /proc/gl-hw-info/device_mac      # must match what you recorded
+ip link | grep ether                 # eth0 matches it; eth1 is typically +1
 iwinfo                               # radios should enumerate
 ```
 
@@ -158,6 +212,27 @@ what is recoverable:
 
 At that point the honest options are GL.iNet support (expect the warranty
 conversation) or using the device over Ethernet only.
+
+### The last resort, and why it is not documented here
+
+If the router will not boot *and* U-Boot recovery cannot be reached over Ethernet,
+the remaining option is physical: opening the case and attaching a USB-to-serial
+adapter to the board's **serial/UART pads** to get a bootloader console, from
+which a backup can be written back.
+
+**This guide does not tell you how to do that, on purpose.** The pad locations,
+voltage level and pinout on this model have not been verified here, and guessing
+at them risks damaging the board — connecting the wrong pin, or a 5 V adapter to
+3.3 V logic, can destroy the SoC outright. Publishing an unverified pinout would
+be worse than publishing nothing.
+
+If you end up needing it, work from a source that has actually verified the
+hardware for your exact model — the OpenWrt device page, a teardown, or GL.iNet
+support — not from this document.
+
+The practical takeaway is upstream of all this: **the off-device backup is what
+keeps you out of this situation.** Take it, copy it to your computer, and keep it
+somewhere you will still have it in a year.
 
 ---
 
