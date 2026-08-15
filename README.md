@@ -334,9 +334,15 @@ Note the md5 it prints.
 This is the step people skip, and it is the one that saves you:
 
 ```sh
-scp -O root@192.168.8.1:/root/factory_backup.bin ~/glinet-factory-backup.bin
-md5 -q ~/glinet-factory-backup.bin      # macOS   (md5sum on Linux/WSL)
+scp -O root@192.168.8.1:/root/factory_backup.bin ~/factory-GL-XXXXXXXXXXXX.bin
+md5 -q ~/factory-GL-XXXXXXXXXXXX.bin    # macOS   (md5sum on Linux/WSL)
 ```
+
+Use the serial `backup` printed in Terminal A in place of `GL-XXXXXXXXXXXX`.
+Naming the file after the serial costs nothing now and matters a great deal if
+you ever own two of these — the images are unit-specific, and restoring the
+wrong one writes another router's MACs and RF calibration into this one. See
+[Telling your backups apart](docs/RECOVERY.md#telling-your-backups-apart).
 
 It must match the md5 from Terminal A exactly. Put the file somewhere permanent
 and backed up — **not** Downloads, not a scratch folder. If the write goes wrong

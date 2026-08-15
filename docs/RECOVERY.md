@@ -44,6 +44,9 @@ skip the upload and restore straight from there.
 
 The script refuses to restore an image whose size does not match the partition,
 which catches the common mistake of restoring a truncated or wrong-model dump.
+It also refuses an image whose serial belongs to a *different* router, and after
+writing it re-reads the partition and compares md5 against the image — so a
+restore that reports success has actually been verified, not merely attempted.
 
 Manual equivalent, if the script will not run.
 
@@ -114,6 +117,40 @@ cat /proc/gl-hw-info/device_mac      # must match what you recorded
 ip link | grep ether                 # eth0 matches it; eth1 is typically +1
 iwinfo                               # radios should enumerate
 ```
+
+### Telling your backups apart
+
+If you own more than one of these, a folder of identically-named `.bin` files is
+a trap: restoring the wrong one writes another unit's MACs and RF calibration
+into this router, and you cannot undo that without the correct image.
+
+Name every backup after the router's serial. The serial is the `GL-` number
+printed on the underside label, and in flash it lives at offset `0x70` of the
+Factory partition:
+
+```sh
+# On the router, against live flash:
+dd if=/dev/mtdblock$N bs=1 skip=112 count=16 2>/dev/null | LC_ALL=C tr -d '\377\000'
+
+# On your computer, against a backup file - same command, same output:
+dd if=factory-backup.bin bs=1 skip=112 count=16 2>/dev/null | LC_ALL=C tr -d '\377\000'
+```
+
+`LC_ALL=C` matters on macOS: the field is padded with `0xff`, and `tr` errors
+with *"Illegal byte sequence"* under a UTF-8 locale.
+
+**Do not use `/proc/gl-hw-info/device_sn` for this.** It exists, but it is a
+different, internal identifier — not the number on the label. On the reference
+device the label serial is a `GL-` prefix followed by twelve digits, while
+`device_sn` is sixteen hex characters with no prefix; the two share nothing. The
+label serial is *only* in the Factory partition, which is also why a backup image
+is self-identifying: the file tells you which router it came from.
+
+`glinet-region.sh` prints the serial in `status` and `backup`, and `restore`
+refuses an image whose serial belongs to a different unit unless you pass
+`--force`. That check deliberately does nothing when either serial is
+unreadable — a damaged partition is exactly when you most need the restore to
+go through.
 
 ---
 
@@ -208,7 +245,9 @@ what is recoverable:
 
 - **Another unit's dump will not work.** It carries that unit's MACs, serials and
   calibration. Flashing it gives you duplicate MACs on your network and wrong
-  calibration for your radio. Do not do this.
+  calibration for your radio. Do not do this. If you are unsure which unit an
+  image came from, check its serial — see
+  [Telling your backups apart](#telling-your-backups-apart).
 
 At that point the honest options are GL.iNet support (expect the warranty
 conversation) or using the device over Ethernet only.
