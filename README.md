@@ -492,10 +492,42 @@ If something goes wrong: **[docs/RECOVERY.md](docs/RECOVERY.md)**.
 
 ---
 
+## Where this does not apply
+
+**This is a GL.iNet firmware patch, not an OpenWrt one.** Every part of the gate
+lives in GL's proprietary layer:
+
+| Component | What it is |
+|---|---|
+| `/usr/share/oui/menu.d/*.json` + the panel JS filter | GL's admin UI (`oui`) |
+| `/etc/init.d/mptun` | GL's tunnel datapath service |
+| `get_country_code()` in `/lib/functions/gl_util.sh` | GL's helper |
+| `/proc/gl-hw-info/country_code` | GL's kernel module |
+| `board_special` UCI config | GL's config namespace |
+
+**On vanilla OpenWrt none of these exist**, so:
+
+- `soft` does nothing — no code reads `board_special.hardware.country_code`.
+- `patch` still flips the byte, but nothing reads it to gate anything.
+- **And you would not want it anyway.** Vanilla OpenWrt has no region gate at
+  all. WireGuard and OpenVPN are ordinary packages you install. There is nothing
+  to unlock, which is why "just install OpenWrt" is a legitimate alternative
+  answer to the same problem rather than a competing method.
+
+**GL firmware on a newer OpenWrt base is untested.** Everything here was measured
+on 4.8.1, which is built on OpenWrt 21.02. GL also ships firmware tracks built on
+much newer OpenWrt releases. The GL layer above almost certainly still exists
+there — it is what makes a GL router a GL router — but whether the paths, the UI
+filter and the `0x88` offset are unchanged has **not** been verified. Run
+`status` first; it reads the flash and `/proc` without writing anything, and it
+refuses to continue if it cannot map your device.
+
+---
+
 ## Tested on
 
-Developed and verified end-to-end on exactly one device. Treat any other model as
-unverified.
+Developed and verified end-to-end on exactly one device. Treat any other model or
+firmware base as unverified.
 
 | | |
 |---|---|
