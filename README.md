@@ -524,6 +524,73 @@ refuses to continue if it cannot map your device.
 
 ---
 
+## Prior art and credit
+
+**The flash offset is not a discovery of mine.** It was published in 2023 and has
+been the standing answer ever since. This section records who found what, so it is
+clear what this repository actually adds.
+
+The reference thread is
+[Converting GL.iNet MT3000 (Beryl AX) from CN to Global](https://forum.openwrt.org/t/converting-gl-inet-mt3000-beryl-ax-from-cn-to-global/165159)
+on the OpenWrt forum — 52 posts, July 2023 to October 2024, ~16k views, **now
+closed to replies**. It also refers back to a GL.iNet forum thread for the MT2500
+that was deleted by a forum admin.
+
+| Who | What they established |
+|---|---|
+| [`daniel`](https://forum.openwrt.org/t/converting-gl-inet-mt3000-beryl-ax-from-cn-to-global/165159/5) (OpenWrt developer) | **The country code lives at offset `0x88` of the Factory partition** — read out of the vendor device tree, with a hexdump showing `DE` on a German unit. This is the offset used here. |
+| [post 4](https://forum.openwrt.org/t/converting-gl-inet-mt3000-beryl-ax-from-cn-to-global/165159/4) | The first published no-flash workaround: `mount --bind` a file over `/proc/gl-hw-info/country_code`, persisted via `/etc/rc.local`. |
+| [post 6](https://forum.openwrt.org/t/converting-gl-inet-mt3000-beryl-ax-from-cn-to-global/165159/6) | The first hex-edit walkthrough, and the first explicit brick warning. |
+| [post 7](https://forum.openwrt.org/t/converting-gl-inet-mt3000-beryl-ax-from-cn-to-global/165159/7) | The one-liner that got copied everywhere: `echo "US" \| dd of=/dev/mtdblock3 bs=1 seek=136`. |
+| [post 8](https://forum.openwrt.org/t/converting-gl-inet-mt3000-beryl-ax-from-cn-to-global/165159/8) | Corrected it to `echo -n` — see below. |
+| [post 30](https://forum.openwrt.org/t/converting-gl-inet-mt3000-beryl-ax-from-cn-to-global/165159/30) | Generalised it into a menu-driven script covering several GL models. |
+
+On Reddit the same knowledge circulates as folklore — *"for Beryl AX it was
+literally two bytes you have to change"* — but without links or steps.
+
+### One correction to the copied command
+
+`echo "US"` emits a **trailing newline**, so
+
+```sh
+echo "US" | dd of=/dev/mtdblock3 bs=1 seek=136     # writes THREE bytes
+```
+
+writes `U`, `S` and `0x0A`, putting a newline at `0x8A`. On the reference unit
+`0x8A` is `0x00` padding:
+
+```
+00000080: 0000 0000 0000 0000 434e 0000 0000 0000  ........CN......
+```
+
+so the stray byte appears to be harmless there — but it is still a byte that was
+not there before, in a field nobody has traced a reader for, and the uncorrected
+version is the one that spread. Use `echo -n`, or use this script, which writes
+exactly the bytes of the code and nothing else.
+
+### What this repository adds
+
+Everything below is on top of the prior art, not instead of it:
+
+- **A backup is mandatory**, and the script refuses to write unless a backup
+  exists whose md5 matches the live partition — a stale backup is worse than none.
+- **The Factory partition is resolved by label at runtime.** Every published
+  version hardcodes `mtdblock3`; that number differs by model and has moved
+  between firmware releases on the same model.
+- **The write is verified byte-for-byte afterwards**, and the whole operation is
+  demonstrated reversible — patched, reverted, md5 bit-identical to the original.
+- **The `board_special` UCI override**, which does not appear in that thread at
+  all. It needs no flash write, no bind mount and no `rc.local` edit, and it undoes
+  in one command.
+- **A measured account of what is actually gated** — full system snapshots diffed
+  between `CN` and `CA`, showing the firmware is identical and the gate is UI-only.
+- **The Wi-Fi regulatory domain**, which is a separate setting that none of the
+  prior work mentions, applied behind a 120-second auto-rollback.
+- **Backups identified by the unit's label serial**, for anyone with more than one
+  router.
+
+---
+
 ## Tested on
 
 Developed and verified end-to-end on exactly one device. Treat any other model or
