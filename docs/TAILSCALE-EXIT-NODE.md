@@ -9,6 +9,39 @@ as a Tailscale exit-node gateway.
 
 ---
 
+## What is already known (read this first)
+
+**This is not an undiscovered bug, and this page does not claim credit for the
+fix.** Before using anything here, know what already exists:
+
+- **GL.iNet support document the workaround.** Staff answer on the forum:
+  enable *Masquerading* for the `tailscale0` zone under LuCI → Network →
+  Firewall.
+  <https://forum.gl-inet.com/t/gl-mt3000-beryl-ax-tailscale-exit-node-breaks-internet-connection/68235/2>
+- **Firmware v4.9.0 exposes it in the UI** — Admin Panel → Applications →
+  Tailscale → Masquerading — and adds a Tailscale kill switch. If you are on
+  4.9.0 or later, use the toggle rather than anything below.
+- **The `gl-tailscale-fix` community plugin** provides LAN IP masquerading and a
+  kill switch for both IPv4 *and* IPv6, plus one-click Tailscale binary updates.
+  For most people this is a better answer than hand-rolled scripts.
+  <https://remotetohome.io/blog/gl-tailscale-fix/>
+- **IPv6 is a separate gap.** GL's firmware does not masquerade IPv6 at all, and
+  the stock kill switch does not cover IPv6 or guest-LAN routed traffic.
+
+**What this page adds** is the part not covered by any of the above: *the fix
+does not necessarily stay applied*, and the way it comes undone is easy to miss.
+An interface event — `ifup wan`, a DHCP renew, a link flap — drops the live rule
+**without running the firewall includes at all**, so neither a
+`/etc/firewall.user` hook nor a boot-time script covers it. On a travel router
+that re-acquires a WAN at every new network, that is the difference between
+"fixed" and "fixed until you move". See
+[Making it stick](#making-it-stick).
+
+Everything below was measured on **4.8.1**, before the 4.9.0 toggle existed. I
+have not tested whether 4.9.0 re-applies its setting on interface events.
+
+---
+
 ## Cause
 
 GL's firmware creates a `tailscale0` firewall zone and wires up the
@@ -34,6 +67,10 @@ translation — which is exactly why the router has internet while nothing behin
 it does.
 
 ## Fix
+
+On **4.9.0 or later**, use the built-in toggle: Admin Panel → Applications →
+Tailscale → Masquerading. On **4.8.x**, either tick *Masquerading* on the
+`tailscale0` zone in LuCI → Network → Firewall, or do it from the shell:
 
 ```sh
 uci set firewall.tailscale0.masq='1'
